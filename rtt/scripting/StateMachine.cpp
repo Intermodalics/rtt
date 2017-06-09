@@ -48,7 +48,8 @@
 #include <boost/tuple/tuple.hpp>
 #include "internal/mystd.hpp"
 
-#define TRACE_INIT() if (mtrace) Logger::In in( _name )
+//#define TRACE_INIT() Logger::In in( _name )
+#define TRACE_INIT() 
 #define TRACE(msg) if (mtrace) log(Info) << '[' << this->getStatusStr() << ']' << std::string(" ") + msg <<endlog()
 
 #ifndef ASSERT_PROPER_EXECUTION_CYCLES
