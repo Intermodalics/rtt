@@ -41,10 +41,10 @@
 using namespace RTT;
 using namespace RTT::detail;
 
-class CorbaTest : public TaskContext
+class CorbaTest
 {
 public:
-    CorbaTest() : TaskContext("CorbaTest") { this->setUp(); }
+    CorbaTest() { this->setUp(); }
     ~CorbaTest() { this->tearDown(); }
 
     TaskContext* tc;
@@ -76,20 +76,20 @@ public:
     void testPortDisconnected();
 
     void callBackPeer(TaskContext* peer, string const& opname) {
-	OperationCaller<void(TaskContext*, string const&)> op1( peer->getOperation(opname), this->engine());
+	OperationCaller<void(TaskContext*, string const&)> op1( peer->getOperation(opname), tc->engine());
 	int count = ++cbcount;
 	log(Info) << "Test executes callBackPeer():"<< count <<endlog();
 	if (!is_calling) {
 		is_calling = true;
 		log(Info) << "Test calls server:" << count <<endlog();
-		op1(this, "callBackPeer");
+		op1(tc, "callBackPeer");
 		log(Info) << "Test finishes server call:"<<count <<endlog();
 	}
 
 	if (!is_sending) {
 		is_sending = true;
 		log(Info) << "Test sends server:"<<count <<endlog();
-		handle = op1.send(this, "callBackPeerOwn");
+		handle = op1.send(tc, "callBackPeerOwn");
 		log(Info) << "Test finishes server send:"<< count <<endlog();
 	}
 	log(Info) << "Test finishes callBackPeer():"<< count <<endlog();
@@ -117,8 +117,8 @@ CorbaTest::setUp()
     wait = cbcount = 0;
     is_calling = false, is_sending = false;
 
-    addOperation("callBackPeer", &CorbaTest::callBackPeer, this,ClientThread);
-    addOperation("callBackPeerOwn", &CorbaTest::callBackPeer, this,OwnThread);
+    tc->addOperation("callBackPeer", &CorbaTest::callBackPeer, this,ClientThread);
+    tc->addOperation("callBackPeerOwn", &CorbaTest::callBackPeer, this,OwnThread);
 }
 
 
