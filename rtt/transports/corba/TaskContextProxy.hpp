@@ -188,6 +188,8 @@ namespace RTT
 
         virtual bool cleanup();
 
+        virtual bool recover();
+        
         virtual bool isActive() const;
 
         virtual bool isConfigured() const;
