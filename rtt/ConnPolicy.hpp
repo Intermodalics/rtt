@@ -101,6 +101,9 @@ namespace RTT {
         static const int LOCKED    = 1;
         static const int LOCK_FREE = 2;
 
+        static const bool PUSH = false;
+        static const bool PULL = true;
+
         /**
          * Create a policy for a (lock-free) fifo buffer connection of a given size.
          * @param size The size of the buffer in this connection
@@ -181,6 +184,8 @@ namespace RTT {
          */
         mutable std::string name_id;
     };
+
+    std::ostream &operator<<(std::ostream &os, const ConnPolicy &cp);
 }
 
 #endif
