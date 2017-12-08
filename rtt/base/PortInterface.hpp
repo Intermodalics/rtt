@@ -211,6 +211,14 @@ namespace RTT
          * connections of this port.
          */
         virtual const internal::ConnectionManager* getManager() const = 0;
+
+    private:
+        /**
+         * @brief Lists all connections this port has, up to depth levels.
+         * @param depth Levels to explore: 1 (or less) will only explore direct
+         *              connections.
+         */
+        void listPortConnections(int depth) const;
 };
 
 }}
