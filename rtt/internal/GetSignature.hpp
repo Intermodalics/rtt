@@ -45,11 +45,19 @@ namespace RTT
 {
     namespace internal
     {
+        template<class FunctionT> struct GetSignature;
+        template<class FunctionT> struct GetSignatureDS;
+
+        template<class FunctionT>
+        struct GetSignature<FunctionT *> {
+            typedef FunctionT Signature;
+        };
+
         /**
          * Returns a function signature from a C or C++ member function pointer type.
          */
-        template<class FunctionT>
-        struct GetSignature {
+        template<class Obj, class Ret, class FunctionT>
+        struct GetSignature<Ret (Obj::*)> {
             typedef typename internal::UnMember< typename boost::remove_pointer<FunctionT>::type >::type Signature;
         };
 
@@ -57,8 +65,8 @@ namespace RTT
          * Returns a function signature from a C or C++ member function pointer type,
          * suitable for DS operations.
          */
-        template<class FunctionT>
-        struct GetSignatureDS {
+        template<class Obj, class FunctionT>
+        struct GetSignatureDS<typename Obj::FunctionT> {
             typedef typename internal::ArgMember< typename boost::remove_pointer<FunctionT>::type >::type Signature;
         };
 
