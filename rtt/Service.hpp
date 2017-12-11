@@ -423,10 +423,11 @@ namespace RTT
          */
         template<class Func>
         Operation< Func >&
-        addOperation( const std::string name, Func func, ExecutionThread et = ClientThread )
+        addOperation( const std::string name, Func* func, ExecutionThread et = ClientThread )
         {
-            typedef typename internal::GetSignature<Func>::Signature Signature;
-            Operation<Signature>* op = new Operation<Signature>(name, func, et, this->getOwnerExecutionEngine() );
+            typedef Func Signature;
+            boost::function<Signature> bfunc = func;
+            Operation<Signature>* op = new Operation<Signature>(name, bfunc, et, this->getOwnerExecutionEngine() );
             ownedoperations.push_back(op);
             return addOperation( *op );
         }
