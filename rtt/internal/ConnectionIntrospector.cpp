@@ -15,6 +15,7 @@ namespace internal {
                     descriptor.get<1>()->getInputEndPoint()->getPort());
         depth = curr_depth;
     }
+
     ConnectionIntrospector::ConnectionIntrospector(
             const base::PortInterface* port) {
         PortQualifier port_(port);
@@ -27,6 +28,28 @@ namespace internal {
         // opposite of the port value.
         is_forward = !port_.is_forward;
         depth = 0;
+    }
+
+    ConnectionIntrospector::ConnectionIntrospector(const TaskContext* tc) {
+        if (!tc) {
+            in_port.is_remote = true;
+            in_port.owner_name = "{EMPTY_COMPONENT}";
+            is_forward = true;
+            depth = -1;
+            return;
+        }
+        in_port.owner_name = tc->getName();
+        is_forward = true;
+        depth = -1;
+        if (tc->ports()) {
+            DataFlowInterface::PortNames port_names = tc->ports()->getPortNames();
+            for (size_t j = 0; j < port_names.size(); ++j) {
+                const std::string& port_name = port_names.at(j);
+                base::PortInterface* port_ptr = tc->getPort(port_name);
+                ConnectionIntrospector ci(port_ptr);
+                sub_connections.push_back(ci);
+            }
+        }
     }
 
     bool ConnectionIntrospector::operator==(const ConnectionIntrospector& other)
@@ -44,7 +67,15 @@ namespace internal {
 
     void ConnectionIntrospector::createGraph(int depth) {
         std::list<ConnectionIntrospector*> to_visit;
-        to_visit.push_back(this);
+        if (sub_connections.empty()) {
+            to_visit.push_back(this);
+        } else {
+            for (std::list< ConnectionIntrospector >::iterator
+                    it = this->sub_connections.begin();
+                    it != this->sub_connections.end(); ++it) {
+                to_visit.push_back(&(*it));
+            }
+        }
         std::set<ConnectionIntrospector> visited;
         createGraph(depth, to_visit, visited);
     }
@@ -82,7 +113,9 @@ namespace internal {
                     to_visit.push_back(&(connection_list.back()));
                 }
             } else {
-                port.port_name = node.connection_id->portName();
+                if (node.connection_id) {
+                    port.port_name = node.connection_id->portName();
+                }
             }
         }
     }
@@ -97,13 +130,18 @@ namespace internal {
     std::ostream& ConnectionIntrospector::printIndented(std::ostream& os,
             int i) const {
         const int currIndent = 4 * this->depth + i;
-        // For the first level (entry-point), only log the port.
-        if (this->depth == 0) {
+        if (this->depth == -1) {
+            // For depth -1, only log the component name.
+            os << std::string(i, ' ') << this->in_port.owner_name
+               << " COMPONENT\n";
+        } else if (this->depth == 0) {
+            // For depth 0, only log the port.
             os << std::string(currIndent, ' ')
                << (this->is_forward ? " IN " : " OUT ")
                << (this->is_forward ? this->in_port
                                          : this->out_port) << ":\n";
-        } else {
+        } else if (this->depth > 0) {
+            // Positive depth, log the full connection information.
             os << std::string(currIndent, ' ')
                << (this->is_forward ? " -> IN " : " <- OUT ")
                << (this->is_forward ? this->in_port
