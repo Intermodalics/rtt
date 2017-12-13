@@ -99,7 +99,7 @@ namespace internal {
             // Would be undefined for remote ports.
             if (!port.is_remote) {
                 std::list<ConnectionManager::ChannelDescriptor>
-                        connections = port.port_ptr->getManager()->getChannels();
+                        connections = port.port_ptr->getManager()->getConnections();
                 for (std::list<ConnectionManager::ChannelDescriptor>::const_iterator it = connections.begin();
                      it != connections.end(); ++it) {
                     // Push back one connection, and add the node to the "to_visit" list.
