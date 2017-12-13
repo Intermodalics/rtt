@@ -85,7 +85,7 @@ public:
     void createGraph(int depth, std::list<ConnectionIntrospector*>& to_visit,
         std::set<ConnectionIntrospector>& visited);
 
-    void /*std::string*/ toDot() const;
+//    void createDot(const std::string& file_name);
 
     friend std::ostream& operator<<(std::ostream& os,
                                     const ConnectionIntrospector&);
