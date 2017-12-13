@@ -63,6 +63,18 @@ public:
             return port_name < other.port_name;
         }
 
+        std::string toDot() const {
+            const std::string separator = "___";
+            std::string owner_clean = owner_name;
+            if (owner_clean[0] == '{') {
+                owner_clean[0] = '_';
+            }
+            if (owner_clean[owner_clean.size()-1] == '}') {
+                owner_clean[owner_clean.size()-1] = '_';
+            }
+            return owner_clean + separator + port_name;
+        }
+
         friend std::ostream& operator<<(std::ostream& os, const PortQualifier&);
     };
 
@@ -89,7 +101,8 @@ public:
     void createGraph(int depth, std::list<ConnectionIntrospector*>& to_visit,
         std::set<ConnectionIntrospector>& visited);
 
-//    void createDot(const std::string& file_name);
+    // Writes to stream a dot graph representation of this object.
+    std::ostream& toDot(std::ostream& os) const;
 
     friend std::ostream& operator<<(std::ostream& os,
                                     const ConnectionIntrospector&);
