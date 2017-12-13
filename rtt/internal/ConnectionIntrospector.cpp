@@ -146,6 +146,196 @@ namespace internal {
         }
     }
 
+    struct ConnectionInfo{
+        ConnPolicy policy;
+        std::set<ConnectionIntrospector::PortQualifier> inputs;
+        std::set<ConnectionIntrospector::PortQualifier> outputs;
+    };
+
+    std::ostream& toDotHeader(std::ostream& os) {
+        os << "digraph G {\nsize=\"1.2,1\"; ratio=fill; fontsize=45; "
+           << "node[fontsize=36]; penwidth=5; edge[penwidth=5]; "
+           << "node[penwidth=5]; clusterrank=local;\n\n";
+        return os;
+    }
+    std::ostream& toDotClosing(std::ostream& os) {
+        os << "\n}\n";
+        return os;
+    }
+
+    std::ostream& ConnectionIntrospector::toDot(std::ostream& os) const {
+        std::map<std::string, std::set<PortQualifier> > component_to_ports;
+        typedef std::string conn_id;
+        // Could have a set if multiple connections are still allowed when using
+        // a shared policy, but then understanding which conn_id a certain
+        // connection corresponds to becomes quite hard.
+        std::map<PortQualifier, conn_id> port_to_shared_conn;
+        std::map<conn_id, ConnectionInfo> connections;
+
+        std::list<const ConnectionIntrospector*> to_visit;
+        std::set<ConnectionIntrospector> visited;
+        to_visit.push_back(this);
+        {
+            // Add name of the first port, if any.
+            const PortQualifier& port = this->is_forward ? this->in_port
+                                                         : this->out_port;
+            if (!port.port_name.empty()) {
+                component_to_ports[port.owner_name].insert(port);
+            }
+        }
+
+        int shared_conn_counter = 0;
+
+        toDotHeader(os);
+
+        while (!to_visit.empty()) {
+            const std::list<ConnectionIntrospector>& connection_list = to_visit.front()->sub_connections;
+            to_visit.pop_front();
+            for (std::list<ConnectionIntrospector>::const_iterator it = connection_list.begin();
+                    it != connection_list.end(); ++it) {
+                // Push back one connection, and add the node to the "to_visit" list.
+                if (visited.count(*it)) {
+                    continue;
+                }
+                visited.insert(*it);
+                to_visit.push_back(&(*it));
+
+                const ConnectionIntrospector& node(*it);
+                const PortQualifier& port = node.is_forward ? node.in_port : node.out_port;
+
+                // This won't show components with no ports.
+                if (!port.port_name.empty()) {
+                    component_to_ports[port.owner_name].insert(port);
+                }
+
+                // Only positive depth nodes have connection information.
+                if (it->depth <= 0) {continue;}
+
+                ostringstream conn_id_stream;
+                switch (it->connection_policy.buffer_policy) {
+                case PerConnection:
+                    // This is uniquely represented, so it needs to be added.
+                    conn_id_stream << "PerConnection_" << node.out_port.toDot()
+                                   << "_TO_" << node.in_port.toDot();
+                    break;
+                case PerInputPort:
+                    conn_id_stream << "PerInputPort_" << node.in_port.toDot();
+                    break;
+                case PerOutputPort:
+                    conn_id_stream << "PerOutputPort_" << node.out_port.toDot();
+                    break;
+                case Shared:
+                    if (port_to_shared_conn.count(node.in_port) == 0 &&
+                            port_to_shared_conn.count(node.out_port) == 0) {
+                        // New shared connection.
+                        conn_id_stream << "Shared#" << ++shared_conn_counter;
+                        port_to_shared_conn[node.in_port] =
+                                conn_id_stream.str();
+                        port_to_shared_conn[node.out_port] =
+                                conn_id_stream.str();
+                    } else if (port_to_shared_conn.count(node.in_port) == 0 &&
+                               port_to_shared_conn.count(node.out_port) != 0) {
+                        // New input port attached to shared connection.
+                        port_to_shared_conn[node.in_port] =
+                                port_to_shared_conn[node.out_port];
+
+                    } else if (port_to_shared_conn.count(node.in_port) != 0 &&
+                               port_to_shared_conn.count(node.out_port) == 0) {
+                        // New output port attached to shared connection.
+                        port_to_shared_conn[node.out_port] =
+                                port_to_shared_conn[node.in_port];
+                    } else {
+                        // Shared connection already exists, should make sure it
+                        // has the same id.
+                        if (port_to_shared_conn[node.out_port] !=
+                                port_to_shared_conn[node.in_port]) {
+                            const std::string& curr_conn_id =
+                                    port_to_shared_conn[node.in_port];
+                            const std::string conn_id_to_remove =
+                                port_to_shared_conn[node.out_port];
+                            // Replace the id in all inputs and outputs of the
+                            // connection conn_id_to_remove.
+                            for (std::set<PortQualifier>::const_iterator it =
+                                 connections[conn_id_to_remove].inputs.begin();
+                                 it != connections[conn_id_to_remove].inputs.end();
+                                 ++it) {
+                                port_to_shared_conn[*it] = curr_conn_id;
+                            }
+                            for (std::set<PortQualifier>::const_iterator it =
+                                 connections[conn_id_to_remove].outputs.begin();
+                                 it != connections[conn_id_to_remove].outputs.end();
+                                 ++it) {
+                                port_to_shared_conn[*it] = curr_conn_id;
+                            }
+                            // Merge connections.
+                            connections[curr_conn_id].inputs.insert(
+                                    connections[conn_id_to_remove].inputs.begin(),
+                                    connections[conn_id_to_remove].inputs.end());
+                            connections[curr_conn_id].outputs.insert(
+                                    connections[conn_id_to_remove].outputs.begin(),
+                                    connections[conn_id_to_remove].outputs.end());
+                            connections.erase(conn_id_to_remove);
+                        }
+                    }
+                    break;
+                default:
+                    assert(false);
+                    break;
+                }
+
+                if (!conn_id_stream.str().empty()) {
+                    conn_id current_conn_id = conn_id_stream.str();
+                    connections[current_conn_id].policy = node.connection_policy;
+                    connections[current_conn_id].outputs.insert(node.out_port);
+                    connections[current_conn_id].inputs.insert(node.in_port);
+                }
+            }
+        }
+
+        for (std::map<std::string, std::set<PortQualifier> >::const_iterator
+                it = component_to_ports.begin(); it != component_to_ports.end();
+                ++it) {
+            os << "subgraph \"cluster_" << it->first << "\" { label=\""
+               << it->first << "\"; ";
+            for (std::set<PortQualifier>::const_iterator
+                    it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+                os << it2->toDot() << "; ";
+            }
+            os << "}\n";
+            // Also add single node properties.
+            for (std::set<PortQualifier>::const_iterator
+                    it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+                os << it2->toDot() << " [label=\"" << it2->port_name
+                   << "\"];\n";
+            }
+        }
+
+        for (std::map<conn_id, ConnectionInfo>::const_iterator it = connections.begin();
+                it != connections.end(); ++it) {
+            conn_id connection_name = it->first;
+            // Replace the second whitespace with a pipe.
+            ostringstream policy_stream;
+            policy_stream << it->second.policy;
+            std::string policy_str = policy_stream.str();
+            policy_str[policy_str.find(' ', policy_str.find(' ') + 1)] = '|';
+            os << connection_name << " [shape=record; label=\"{"
+               << connection_name << "|" << policy_str
+               << "}\"];\n";
+            for (std::set<PortQualifier>::const_iterator
+                    it2 = it->second.inputs.begin();
+                    it2 != it->second.inputs.end(); ++it2) {
+                os << connection_name << " -> " << it2->toDot() << ";\n";
+            }
+            for (std::set<PortQualifier>::const_iterator
+                    it2 = it->second.outputs.begin();
+                    it2 != it->second.outputs.end(); ++it2) {
+                os << it2->toDot() << " -> " << connection_name << ";\n";
+            }
+        }
+
+        return toDotClosing(os);
+    }
+
     std::ostream& operator<<(
             std::ostream& os,
             const ConnectionIntrospector::PortQualifier& pq) {
