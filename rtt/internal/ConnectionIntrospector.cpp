@@ -120,6 +120,71 @@ namespace internal {
         }
     }
 
+    void ConnectionIntrospector::toDot() const {
+        std::map<std::string, std::vector<std::string> > component_to_ports;
+        std::map<std::string, std::string> out_port_to_in_port;
+//        std::map<std::string, std::string> out_port_to_connection;
+//        std::map<std::string, std::string> connection_to_in_port;
+
+        std::list<const ConnectionIntrospector*> to_visit;
+        std::set<ConnectionIntrospector> visited;
+        to_visit.push_back(this);
+
+        while (!to_visit.empty()) {
+            const ConnectionIntrospector& node(*(to_visit.front()));
+            to_visit.pop_front();
+            int curr_depth = node.depth;
+            const std::list<ConnectionIntrospector>& connection_list = node.sub_connections;
+            const PortQualifier& port = node.is_forward ? node.in_port : node.out_port;
+            if (curr_depth == -1) {
+                component_to_ports[in_port.owner_name];
+            }
+            for (std::list<ConnectionIntrospector>::const_iterator it = connection_list.begin();
+                    it != connection_list.end(); ++it) {
+                // Push back one connection, and add the node to the "to_visit" list.
+                if (visited.count(*it)) {
+                    continue;
+                }
+                visited.insert(*it);
+
+                component_to_ports[port.owner_name];  // In case it didn't exist
+                component_to_ports[port.owner_name].push_back(port.port_name);
+
+                if (depth == 0) {continue;}
+                // Make sure pointers exist...
+                ostringstream os_port, os_port2;//os_connection;
+                os_port << it->out_port;
+                os_port2 << it->in_port;
+                out_port_to_in_port[os_port.str()] = os_port2.str();
+//                os_port << port;
+//                // TODO: this needs to have a unique ID!!!
+//                os_connection << it->connection_id.typeString() << "|"
+//                              << it->connection_policy;
+//                if (node.is_forward) {
+//                    out_port_to_connection[os_port.toString()] = os_connection.toString();
+//                } else {
+//                    connection_to_in_port[os_port.toString()] = os_connection.toString();
+//                }
+                to_visit.push_back(&(*it));
+            }
+        }
+
+        for (std::map<std::string, std::vector<std::string> >::const_iterator it = component_to_ports.begin();
+                 it != component_to_ports.end(); ++it) {
+            std::cout << "subgraph \"" << it->first << "\" { label=\""
+                      << it->first << "\"; ";
+            for (std::vector<std::string>::const_iterator it2 = it->second.begin();
+                    it2 != it->second.end(); ++it2) {
+                std::cout << *it2 << "; ";
+            }
+            std::cout << "}\n";
+        }
+        for (std::map<std::string, std::string>::const_iterator it = out_port_to_in_port.begin();
+                it != out_port_to_in_port.end(); ++it) {
+            std::cout << it->first << "->" << it->second << "; \n";
+        }
+    }
+
     std::ostream& operator<<(
             std::ostream& os,
             const ConnectionIntrospector::PortQualifier& pq) {
@@ -165,7 +230,9 @@ namespace internal {
     std::ostream& operator<<(
             std::ostream& os,
             const ConnectionIntrospector& descriptor) {
-        return descriptor.indent(0)(os);
+        descriptor.toDot();
+        return os;
+//        return descriptor.indent(0)(os);
     }
 
 }  // namespace internal
