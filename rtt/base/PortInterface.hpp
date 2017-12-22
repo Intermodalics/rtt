@@ -246,6 +246,16 @@ namespace RTT
          *              connections.
          */
         void showPortConnections(int depth) const;
+
+        /**
+         * Creates a graph with all connections this port has, up to @p depth
+         * levels, and writes it to file @p filename.
+         * @param depth Levels to explore: 1 (or less) will only explore direct
+         *              connections.
+         * @param filename Name of the file to write the connections graph to.
+         */
+        void printPortConnectionsGraph(int depth,
+                                       const std::string& filename) const;
     };
 
 }}
