@@ -89,6 +89,11 @@ namespace internal {
         createGraph(depth, to_visit, visited);
     }
 
+    void ConnectionIntrospector::addSubConnection(
+            const ConnectionIntrospector& other) {
+        this->sub_connections.push_back(other);
+    }
+
     void ConnectionIntrospector::createGraph(
             int depth,
             std::list<ConnectionIntrospector*>& to_visit,

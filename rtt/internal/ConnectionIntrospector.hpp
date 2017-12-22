@@ -83,6 +83,9 @@ public:
 
     std::ostream& printIndented(std::ostream& os, int i) const;
 
+    // Manually add a sub-connection to this ConnectionIntrospector object.
+    void addSubConnection(const ConnectionIntrospector& other);
+
     void createGraph(int depth, std::list<ConnectionIntrospector*>& to_visit,
         std::set<ConnectionIntrospector>& visited);
 
