@@ -170,6 +170,7 @@ namespace RTT
 
     void Activity::loop() {
         nsecs wakeup = 0;
+        nsecs last_periodic_wakeup = 0;
 
         while ( true ) {
             // since update_period may be changed at any time, we need to recheck it each time:
@@ -177,6 +178,7 @@ namespace RTT
                 // initialize first wakeup time if we are periodic.
                 if ( wakeup == 0 ) {
                     wakeup = os::TimeService::Instance()->getNSecs() + Seconds_to_nsecs(update_period);
+                    last_periodic_wakeup = wakeup;
                 }
             } else {
                 // only clear if update_period <= 0.0 :
@@ -189,6 +191,11 @@ namespace RTT
                 mtimeout = false;
                 this->step();
                 this->work(base::RunnableInterface::TimeOut);
+                // get the current time before sleeping again
+                if (wakeup != 0 &&
+                        this->getTask()->wait_policy == ORO_WAIT_ABS) {
+                    last_periodic_wakeup = os::TimeService::Instance()->getNSecs();
+                }
             } else {
                 // was a trigger() call
                 if ( update_period > 0 ) {
@@ -218,9 +225,16 @@ namespace RTT
 
                 if (time_elapsed) {
                     if (this->getTask()->wait_policy == ORO_WAIT_ABS) {
-                        // calculate next wakeup point, overruns causes skips:
-                        while ( wakeup < os::TimeService::Instance()->getNSecs() )
-                            wakeup = wakeup + Seconds_to_nsecs(update_period);
+                        // in the case of overrun by more than 4 periods,
+                        // skip all the updates before now, with the next update
+                        // aligned to period.
+                        const int maxDelayInPeriods = 4;
+                        nsecs update_ns = Seconds_to_nsecs(update_period);
+                        if (last_periodic_wakeup - wakeup > maxDelayInPeriods * update_ns) {
+                            wakeup += update_ns * ((last_periodic_wakeup - wakeup) / update_ns);
+                        } else {
+                            wakeup += update_ns;
+                        }
                     } else {
                         // for ORO_WAIT_REL policy, wait for period starting now
                         wakeup = os::TimeService::Instance()->getNSecs() +
