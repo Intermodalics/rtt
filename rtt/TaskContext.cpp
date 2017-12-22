@@ -46,6 +46,7 @@
 #include <functional>
 #include <boost/bind.hpp>
 #include <boost/mem_fn.hpp>
+#include <fstream>
 
 #include "internal/ConnectionIntrospector.hpp"
 #include "internal/DataSource.hpp"
@@ -107,6 +108,9 @@ namespace RTT
         this->addOperation("loadService", &TaskContext::loadService, this, ClientThread).doc("Loads a service known to RTT into this component.").arg("service_name","The name with which the service is registered by in the PluginLoader.");
         this->addOperation("showPortConnections", &TaskContext::showPortConnections, this, ClientThread).doc("Logs a list of connections for all ports in this component.")
                 .arg("depth", "Number of levels to look for: 1 will only list direct connections, more than 1 will also look at connected ports connections.");
+        this->addOperation("printPortConnectionsGraph", &TaskContext::printPortConnectionsGraph, this, ClientThread).doc("Creates a graph of connections for all ports in this component.")
+                .arg("depth", "Number of levels to look for: 1 will only list direct connections, more than 1 will also look at connected ports connections.")
+                .arg("file", "Name of the file to save the graph to.");
 
         this->addAttribute("TriggerOnStart",mTriggerOnStart);
         this->addAttribute("CycleCounter",mCycleCounter);
@@ -461,6 +465,26 @@ namespace RTT
         ConnectionIntrospector ci(this);
         ci.createGraph(depth);
         std::cout << "\n" << ci << std::endl;
+    }
+
+    void TaskContext::printPortConnectionsGraph(
+            int depth, const std::string& filename) const
+    {
+        if (depth < 1) {depth = 1;}
+
+        ConnectionIntrospector ci(this);
+        ci.createGraph(depth);
+
+        std::ofstream file;
+        file.open(filename.c_str());
+        if (!file.is_open()) {
+            log(Error) << "Unable to open file '" << filename << "', will print"
+                       << " port connections to stdout" << endlog();
+            ci.toDot(std::cout);
+        } else {
+            ci.toDot(file);
+            file.close();
+        }
     }
 }
 
