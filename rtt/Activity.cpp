@@ -217,9 +217,15 @@ namespace RTT
                 bool time_elapsed = ! msg_cond.wait_until(msg_lock,wakeup);
 
                 if (time_elapsed) {
-                    // calculate next wakeup point, overruns causes skips:
-                    while ( wakeup < os::TimeService::Instance()->getNSecs() )
-                        wakeup = wakeup + Seconds_to_nsecs(update_period);
+                    if (this->getTask()->wait_policy == ORO_WAIT_ABS) {
+                        // calculate next wakeup point, overruns causes skips:
+                        while ( wakeup < os::TimeService::Instance()->getNSecs() )
+                            wakeup = wakeup + Seconds_to_nsecs(update_period);
+                    } else {
+                        // for ORO_WAIT_REL policy, wait for period starting now
+                        wakeup = os::TimeService::Instance()->getNSecs() +
+                                Seconds_to_nsecs(update_period);
+                    }
                     mtimeout = true;
                 }
             }
