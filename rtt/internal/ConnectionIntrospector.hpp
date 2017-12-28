@@ -65,14 +65,15 @@ public:
 
         std::string toDot() const {
             const std::string separator = "___";
-            std::string owner_clean = owner_name;
-            if (owner_clean[0] == '{') {
-                owner_clean[0] = '_';
+            const std::string chars_to_replace = "{}/:";
+            std::string dot_name = owner_name + separator + port_name;
+            for (size_t i = 0; i < chars_to_replace.size(); ++i) {
+                char c = chars_to_replace[i];
+                while(dot_name.find(c) != dot_name.npos) {
+                    dot_name[dot_name.find(c)] = '_';
+                }
             }
-            if (owner_clean[owner_clean.size()-1] == '}') {
-                owner_clean[owner_clean.size()-1] = '_';
-            }
-            return owner_clean + separator + port_name;
+            return dot_name;
         }
 
         friend std::ostream& operator<<(std::ostream& os, const PortQualifier&);
