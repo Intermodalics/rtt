@@ -10,14 +10,27 @@ namespace internal {
         is_forward = forward;
         connection_id = descriptor.get<0>();
         connection_policy = descriptor.get<2>();
+        base::ChannelElementBase::shared_ptr elem = descriptor.get<1>();
         if (is_forward) {
-            in_port = PortQualifier(
-                        descriptor.get<1>()->getOutputEndPoint()->getPort());
+            while (elem && elem->getOutput()) {
+                elem = elem->getOutput();
+            }
+            if (elem->getPort()) {
+                in_port = PortQualifier(elem->getPort());
+            } else {
+                in_port = PortQualifier(elem.get(), true /*is_forward*/);
+            }
             out_port = port;
         } else {
             in_port = port;
-            out_port = PortQualifier(
-                        descriptor.get<1>()->getInputEndPoint()->getPort());
+            while (elem && elem->getInput()) {
+                elem = elem->getInput();
+            }
+            if (elem->getPort()) {
+                out_port = PortQualifier(elem->getPort());
+            } else {
+                out_port = PortQualifier(elem.get(), false /*is_forward*/);
+            }
         }
         depth = curr_depth;
     }

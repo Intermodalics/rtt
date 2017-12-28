@@ -51,6 +51,28 @@ public:
             }
         }
 
+        // Constructing from a channel element when a port is not available, so
+        // we are dealing with a remote port.
+        PortQualifier(const base::ChannelElementBase* elem, bool is_forward)
+                : port_ptr(NULL), is_forward(is_forward), is_remote(true) {
+            assert(!elem->getPort());
+            port_name = elem->getRemoteURI();
+            if (elem->getElementName() == "RosPubChannelElement") {
+                owner_name = "ROS";
+                assert(is_forward);
+            } else if (elem->getElementName() == "RosSubChannelElement") {
+                owner_name = "ROS";
+                port_name = elem->getRemoteURI();
+                assert(!is_forward);
+            } else if (elem->getElementName() == "CorbaRemoteChannelElement") {
+                owner_name = "CORBA";
+            } else if (elem->getElementName() == "MQChannelElement") {
+                owner_name = "MQ";
+            } else {
+                owner_name = "{UNKNOWN_OWNER}";
+            }
+        }
+
         bool operator==(const PortQualifier& other) const {
             // For simplicity, remote ports are always different for now.
             return !this->is_remote && this->owner_name == other.owner_name &&
