@@ -93,6 +93,19 @@ namespace RTT {
                 oid = mpoa->activate_object(this);
                 // Force creation of dispatcher.
                 CorbaDispatcher::Instance(msender);
+
+                std::cout << "mpoa NAME: " + std::string(mpoa->the_name());
+                std::cout << "msender OWNER:";
+                if (msender->getOwner()) {
+                    std::cout << msender->getOwner()->getName() << " > ";
+                } else {
+                    std::cout << "_no_owner_ > ";
+                }
+                std::cout << "PORTS #" << msender->getPortNames().size() << std::endl;
+                for (auto port: msender->getPortNames()) {
+                    std::cout << port << " ";
+                }
+                std::cout << std::endl;
             }
 
             ~RemoteChannelElement()
