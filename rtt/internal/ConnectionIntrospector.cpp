@@ -176,6 +176,9 @@ namespace internal {
         return os;
     }
 
+    std::map<std::string, std::string>
+            ConnectionIntrospector::PortQualifier::long_port_names;
+
     std::ostream& ConnectionIntrospector::toDot(std::ostream& os) const {
         std::map<std::string, std::set<PortQualifier> > component_to_ports;
         typedef std::string conn_id;
@@ -318,7 +321,10 @@ namespace internal {
             // Also add single node properties.
             for (std::set<PortQualifier>::const_iterator
                     it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
-                os << it2->toDot() << " [label=\"" << it2->port_name
+                os << it2->toDot() << " [label=\""
+                   << (PortQualifier::long_port_names.count(it2->port_name)
+                        ? PortQualifier::long_port_names.at(it2->port_name)
+                        : it2->port_name)
                    << "\"];\n";
             }
         }

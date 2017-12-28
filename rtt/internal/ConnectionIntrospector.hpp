@@ -27,6 +27,7 @@ public:
         const base::PortInterface* port_ptr;
         bool is_forward;
         bool is_remote;
+        static std::map<std::string, std::string> long_port_names;
 
         PortQualifier() {}
         PortQualifier(const base::PortInterface* port)
@@ -71,6 +72,10 @@ public:
             } else {
                 owner_name = "{UNKNOWN_OWNER}";
             }
+            if (port_name.length() > 15 && !long_port_names.count(port_name)) {
+                long_port_names[port_name] =
+                        "LONG_PORT_NAME_" + std::to_string(long_port_names.size());
+            }
         }
 
         bool operator==(const PortQualifier& other) const {
@@ -88,7 +93,10 @@ public:
         std::string toDot() const {
             const std::string separator = "___";
             const std::string chars_to_replace = "{}/:";
-            std::string dot_name = owner_name + separator + port_name;
+            std::string dot_name = owner_name + separator +
+                    (long_port_names.count(port_name)
+                            ? long_port_names.at(port_name)
+                            : port_name);
             for (size_t i = 0; i < chars_to_replace.size(); ++i) {
                 char c = chars_to_replace[i];
                 while(dot_name.find(c) != dot_name.npos) {
