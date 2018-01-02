@@ -358,7 +358,10 @@ namespace internal {
     std::ostream& operator<<(
             std::ostream& os,
             const ConnectionIntrospector::PortQualifier& pq) {
-        os << pq.owner_name << "." << pq.port_name;
+        os << pq.owner_name << "."
+           << (ConnectionIntrospector::PortQualifier::long_port_names.count(pq.port_name)
+                ? ConnectionIntrospector::PortQualifier::long_port_names[pq.port_name]
+                : pq.port_name);
         return os;
     }
 
