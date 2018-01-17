@@ -39,6 +39,8 @@
 #define ORO_BUFFER_LOCK_FREE_HPP
 
 #include "../os/oro_arch.h"
+#include "../os/Atomic.hpp"
+#include "../os/CAS.hpp"
 #include "BufferInterface.hpp"
 #include "../internal/AtomicMWSRQueue.hpp"
 #include "../internal/AtomicMWMRQueue.hpp"
@@ -88,7 +90,7 @@ namespace RTT
         internal::AtomicQueue<Item*> *const bufs;
         internal::TsPool<Item> *const mpool;
 
-        size_type droppedSamples;
+        RTT::os::AtomicInt droppedSamples;
 
     public:
         /**
@@ -184,25 +186,25 @@ namespace RTT
 
         virtual size_type dropped() const
         {
-            return droppedSamples;
+            return droppedSamples.read();
         }
         
         bool Push( param_t item)
         {
             if (!mcircular && ( capacity() == (size_type)bufs->size() )) {
-                droppedSamples++;
+                droppedSamples.inc();
                 return false;
                 // we will recover below in case of circular
             }
             Item* mitem = mpool->allocate();
             if ( mitem == 0 ) { // queue full ( rare but possible in race with PopWithoutRelease )
                 if (!mcircular) {
-                    droppedSamples++;
+                    droppedSamples.inc();
                     return false;
                 }
                 else {
                     if (bufs->dequeue( mitem ) == false ) {
-                        droppedSamples++;
+                        droppedSamples.inc();
                         return false; // assert(false) ???
                     }
                     // we keep mitem to write item to next
@@ -217,7 +219,7 @@ namespace RTT
                 //bigger than the buffer
                 if (!mcircular) {
                     mpool->deallocate( mitem );
-                    droppedSamples++;
+                    droppedSamples.inc();
                     return false;
                 } else {
                     // pop & deallocate until we have free space.
@@ -225,7 +227,7 @@ namespace RTT
                     do {
                         if ( bufs->dequeue( itmp ) ) {
                             mpool->deallocate( itmp );
-                            droppedSamples++;
+                            droppedSamples.inc();
                         } else {
                             // Both operations, enqueue() and dequeue() failed on the buffer:
                             // We could free the allocated pool item return false here,
@@ -251,7 +253,7 @@ namespace RTT
                 }
                 written++;
             }
-            droppedSamples += towrite - written;
+            droppedSamples.add(towrite - written);
             return written;
         }
 
