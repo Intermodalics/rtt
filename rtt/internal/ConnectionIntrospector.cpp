@@ -241,9 +241,70 @@ ConnectionIntrospector::ConnectionPtr ConnectionIntrospector::findConnectionTo(c
     return ConnectionPtr();
 }
 
+std::string ConnectionIntrospector::Node::getConnectionSummary() const {
+    std::string connection_summary;
+    const int connection_nr = this->connections_.size();
+    switch (connection_nr) {
+    case 0:
+        connection_summary = "no";
+        break;
+    case 1:
+        connection_summary = "single";
+        break;
+    default:
+        connection_summary = "multiple";
+        break;
+    }
+
+    return (" with " + connection_summary + " connection(s) (#"
+            + std::to_string(connection_nr) + ")");
+}
+
+std::ostream& ConnectionIntrospector::Node::printIndented(
+        std::ostream& os, int indent_lvl) const {
+    const std::string port_type = "[" +
+            (this->isPort()
+                ? dynamic_cast<const ConnectionIntrospector::PortNode *>(this)->getPortType()
+                : "NOT")
+            + " port] ";
+    const std::string is_remote =
+            this->isRemote() ? "[REMOTE: " + this->endpoint_->getElementName() + "] "
+                             : "";
+
+    const std::string connection_summary =
+            (indent_lvl == 0 ? this->getConnectionSummary() : "");
+
+    std::ostringstream connection_str;
+    ConnectionPtr connection = findConnectionTo(this->connections_, *this);
+    if (connection.get()) {
+        connection_str << " [" << connection->to_.second.get<2>() << "]";
+    }
+
+    const int currIndent = 4 * indent_lvl;
+    os << std::string(currIndent, ' ')
+       << port_type << is_remote << this->getName() << connection_summary
+       << connection_str.str() << "\n";
+
+    for (Connections::const_iterator conn = this->connections_.begin();
+         conn != this->connections_.end(); ++conn) {
+        // Avoid printing myself again.
+        if (*((*conn)->to()) == *this) continue;
+
+        (*conn)->to()->printIndented(os, indent_lvl + 1);
+    }
+
+    return os;
+}
+
 std::ostream& operator<<(
         std::ostream& os,
         const ConnectionIntrospector& descriptor) {
+
+    for (ConnectionIntrospector::Nodes::const_iterator node = descriptor.start_nodes_.begin();
+         node != descriptor.start_nodes_.end(); ++node) {
+        (*node)->printIndented(os, 0) << "\n";
+    }
+
     return os;
 }
 
