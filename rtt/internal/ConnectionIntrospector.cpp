@@ -194,14 +194,9 @@ void ConnectionIntrospector::createGraphInternal(int remaining_depth, const Node
                     // try to find matching connection in other where to == node
                     connection = findConnectionTo(other->connections_, *node);
                     if (connection) {
-                        // complete descriptor (to part should be empty, or
-                        // coherent with what already present)
-                        assert(connection->to_.second.get<0>() == 0 ||
-                               connection->to_.second.get<0>() ==
-                                    descriptor.get<0>());
-                        assert(connection->to_.second.get<1>() == 0 ||
-                               connection->to_.second.get<1>() ==
-                                    descriptor.get<1>());
+                        // complete descriptor (to part should be empty)
+                        assert(connection->to_.second.get<0>() == 0);
+                        assert(connection->to_.second.get<1>() == 0);
                         assert(connection->from_.second.get<1>() == node->getEndpoint());
                         connection->to_.second = descriptor;
                     }
@@ -218,41 +213,6 @@ void ConnectionIntrospector::createGraphInternal(int remaining_depth, const Node
                     connection.reset(new Connection(node, other, descriptor));
                 }
                 node->connections_.push_back(connection);
-
-                // If no further exploration is done on other (final depth) and
-                // it is a port, make sure we get the associated descriptor.
-                if (remaining_depth <= 0 && other->isPort()) {
-                    PortNode *port_node_other = dynamic_cast<PortNode *>(other.get());
-                    ConnectionManager::Connections connections_other = port_node_other->getPort()->getManager()->getConnections();
-                    for(ConnectionManager::Connections::const_iterator con_other_it = connections_other.begin();
-                        con_other_it != connections_other.end(); ++con_other_it) {
-                        const ConnectionManager::ChannelDescriptor &descriptor_other = *con_other_it;
-                        const base::PortInterface *other_2_port = descriptor_other.get<1>()->getPort();
-                        // Only consider the descriptor associated to node.
-                        if (!other_2_port || !( PortNode(other_2_port) == *(node.get()) )) {
-                            continue;
-                        }
-                        ConnectionPtr connection_other = findConnectionTo(node->connections_, *other);
-                        if (connection_other.get()) {
-                            // complete descriptor (to part should be empty, or
-                            // coherent with what already present)
-                            assert(connection_other->to_.second.get<0>() == 0 ||
-                                   connection_other->to_.second.get<0>() ==
-                                        descriptor_other.get<0>());
-                            assert(connection_other->to_.second.get<1>() == 0 ||
-                                   connection_other->to_.second.get<1>() ==
-                                        descriptor_other.get<1>());
-                            assert(connection_other->from_.second.get<1>() == other->getEndpoint());
-                            connection_other->to_.second = descriptor_other;
-                            other->connections_.push_back(connection_other);
-                        }
-                        break;
-                    }
-                } else if (!other->isPort()) {
-                    // For non-port elements, store the same connection to at
-                    // least show the connPolicy.
-                    other->connections_.push_back(connection);
-                }
             }
         }
     }
