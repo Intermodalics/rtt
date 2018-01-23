@@ -52,7 +52,9 @@ RemoteConnID::RemoteConnID(CDataFlowInterface_ptr dataflow, std::string const& n
                            base::PortInterface const* port)
 : dataflow(CDataFlowInterface::_duplicate(dataflow))
   , name(name)
-  , port(port) {}
+  , port(port) {
+    std::cout << "[DEBUG] CREATED RemoteConnID named " << name << std::endl;
+}
 
 bool RemoteConnID::isSameID(ConnID const& id) const
         {
