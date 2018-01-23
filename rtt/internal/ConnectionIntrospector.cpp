@@ -158,6 +158,7 @@ void ConnectionIntrospector::reset() {
 }
 
 void ConnectionIntrospector::createGraph(int depth) {
+    depth_ = depth;
     createGraphInternal(depth, start_nodes_);
 }
 
@@ -261,7 +262,18 @@ std::string ConnectionIntrospector::Node::getConnectionSummary() const {
 }
 
 std::ostream& ConnectionIntrospector::Node::printIndented(
-        std::ostream& os, int indent_lvl) const {
+        std::ostream& os, int depth, int indent_lvl,
+        const ConnectionPtr incoming_connection,
+        Connections printed_connections) const {
+    if (indent_lvl > depth) return os;
+
+    if (std::find(printed_connections.begin(), printed_connections.end(),
+                  incoming_connection) != printed_connections.end()) {
+        return os;
+    } else if (incoming_connection.get()){
+        printed_connections.push_back(incoming_connection);
+    }
+
     const std::string port_type = "[" +
             (this->isPort()
                 ? dynamic_cast<const ConnectionIntrospector::PortNode *>(this)->getPortType()
@@ -274,10 +286,11 @@ std::ostream& ConnectionIntrospector::Node::printIndented(
     const std::string connection_summary =
             (indent_lvl == 0 ? this->getConnectionSummary() : "");
 
+    ConnectionPtr connection = incoming_connection;
     std::ostringstream connection_str;
-    ConnectionPtr connection = findConnectionTo(this->connections_, *this);
     if (connection.get()) {
-        connection_str << " [" << connection->to_.second.get<2>() << "]";
+        assert(connection->from().get());
+        connection_str << " [" << connection->from_.second.get<2>() << "]";
     }
 
     const int currIndent = 4 * indent_lvl;
@@ -287,10 +300,13 @@ std::ostream& ConnectionIntrospector::Node::printIndented(
 
     for (Connections::const_iterator conn = this->connections_.begin();
          conn != this->connections_.end(); ++conn) {
-        // Avoid printing myself again.
-        if (*((*conn)->to()) == *this) continue;
-
-        (*conn)->to()->printIndented(os, indent_lvl + 1);
+        if (*((*conn)->to()) == *this) {
+            (*conn)->from()->printIndented(os, depth, indent_lvl + 1, *conn,
+                                           printed_connections);
+        } else {
+            (*conn)->to()->printIndented(os, depth, indent_lvl + 1, *conn,
+                                         printed_connections);
+        }
     }
 
     return os;
@@ -302,7 +318,9 @@ std::ostream& operator<<(
 
     for (ConnectionIntrospector::Nodes::const_iterator node = descriptor.start_nodes_.begin();
          node != descriptor.start_nodes_.end(); ++node) {
-        (*node)->printIndented(os, 0) << "\n";
+        (*node)->printIndented(
+                    os, descriptor.depth_, 0,
+                    ConnectionIntrospector::ConnectionPtr(), {}) << "\n";
     }
 
     return os;

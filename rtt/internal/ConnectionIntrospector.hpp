@@ -65,7 +65,7 @@ private:
         const_iterator begin() const;
         const_iterator end() const;
 
-        std::ostream& printIndented(std::ostream& os, int indent_lvl) const;
+        std::ostream& printIndented(std::ostream& os, int depth, int indent_lvl, const ConnectionPtr incoming_connection, Connections printed_connections) const;
     protected:
         Node(base::ChannelElementBase *endpoint, const std::string &name = std::string());
         Direction direction_;
