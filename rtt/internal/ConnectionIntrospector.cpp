@@ -166,8 +166,6 @@ void ConnectionIntrospector::createGraphInternal(int remaining_depth, const Node
     --remaining_depth;
     Nodes next_visit;
 
-//    std::cout << "remaining_depth: " << remaining_depth << " - to_visit:\n";
-
     for(Nodes::const_iterator node_it = to_visit.begin(); node_it != to_visit.end(); ++node_it) {
         const NodePtr &node = *node_it;
 
@@ -257,11 +255,6 @@ void ConnectionIntrospector::createGraphInternal(int remaining_depth, const Node
                 }
             }
         }
-//        std::cout << " - [" << (node->isPort() ? "" : "NOT ") << "port]"
-//                  << node->getName() << "(#" << node->connections_.size() << " connections)" << std::endl;
-//        for (ConnectionPtr conn : node->connections_) {
-//            std::cout << " -- " << conn->from()->getName() << " > " << conn->to()->getName() << std::endl;
-//        }
     }
 
     if (!next_visit.empty()) {
@@ -318,32 +311,8 @@ std::ostream& ConnectionIntrospector::Node::printIndented(
             this->isRemote() ? "[REMOTE: " + this->endpoint_->getElementName() + "] "
                              : "";
 
-    std::ostringstream debug_info;
-    if (this->isRemote() || !this->isPort()) {
-        if (this->endpoint_.get()){
-            debug_info << "localURI: " << this->endpoint_->getLocalURI()
-                      << " | remoteURI: " << this->endpoint_->getRemoteURI();
-            if (this->endpoint_->getConnPolicy()) {
-                debug_info << " | connPolicy: "
-                          << *(this->endpoint_->getConnPolicy());
-            } else {
-                debug_info << " | connPolicy: NONE";
-            }
-        } else {
-            debug_info << " | endpoint: NONE";
-        }
-    }
-
     const std::string connection_summary =
             (indent_lvl == 0 ? this->getConnectionSummary() : "");
-
-    if (indent_lvl == 0) {
-        std::cout << "DEBUG CONNECTIONS for " << this->getName() << ":\n";
-        for (auto conn: this->connections_) {
-            std::cout << " - " << conn->from()->getName() << " > "
-                      << conn->to()->getName() << std::endl;
-        }
-    }
 
     std::ostringstream connection_str;
     ConnectionPtr connection = findConnectionTo(this->connections_, *this);
@@ -351,43 +320,16 @@ std::ostream& ConnectionIntrospector::Node::printIndented(
         connection_str << " [" << connection->to_.second.get<2>() << "]";
     }
 
-    if (connection.get()) {
-        if (this->isRemote() || !this->isPort()) {
-            if (connection->to_.second.get<0>()) {
-                debug_info << " | to_.ConnID.getName: " << connection->to_.second.get<0>()->getName();
-            } else {
-                debug_info << " | to_.ConnID: NONE";
-            }
-            if (connection->from_.second.get<0>()) {
-                debug_info << " | from_.ConnID.getName: " << connection->from_.second.get<0>()->getName();
-            } else {
-                debug_info << " | from_.ConnID: NONE";
-            }
-        }
-    }
-
     const int currIndent = 4 * indent_lvl;
     os << std::string(currIndent, ' ')
        << port_type << is_remote << this->getName() << connection_summary
        << connection_str.str() << "\n";
-    if (!debug_info.str().empty()) {
-        os << std::string(currIndent, ' ') << "[DEBUG INFO] "
-           << debug_info.str() << "\n";
-    }
 
     for (Connections::const_iterator conn = this->connections_.begin();
          conn != this->connections_.end(); ++conn) {
         // Avoid printing myself again.
         if (*((*conn)->to()) == *this) continue;
 
-//        if ((*conn)->to_.second.get<0>()) {
-//            os << "[TO] ConnID.getName(): "
-//               << (*conn)->to_.second.get<0>()->getName() << std::endl;
-//        }
-//        if ((*conn)->from_.second.get<0>()) {
-//            os << "[FROM] ConnID.getName(): "
-//               << (*conn)->from_.second.get<0>()->getName() << std::endl;
-//        }
         (*conn)->to()->printIndented(os, indent_lvl + 1);
     }
 
