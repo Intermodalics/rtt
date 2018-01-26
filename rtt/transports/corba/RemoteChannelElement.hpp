@@ -75,6 +75,8 @@ namespace RTT {
 
         ConnPolicy policy;
 
+        std::string localUri;
+
         public:
             /**
              * Create a channel element for remote data exchange.

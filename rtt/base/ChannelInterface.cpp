@@ -459,6 +459,26 @@ bool MultipleInputsMultipleOutputsChannelElementBase::disconnect(ChannelElementB
     }
 }
 
+bool ChannelElementBase::isRemoteElement() const {
+    return false;
+}
+
+std::string ChannelElementBase::getRemoteURI() const {
+    if(!output)
+    {
+        return std::string();
+    }
+    return output->getLocalURI();
+}
+
+std::string ChannelElementBase::getLocalURI() const {
+    return std::string(boost::lexical_cast<std::string>(this));
+}
+
+std::string ChannelElementBase::getElementName() const {
+    return std::string("ChannelElementBase");
+}
+
 void ChannelElementBase::ref()
 {
     oro_atomic_inc(&refcount);

@@ -40,6 +40,8 @@
 #include "../Service.hpp"
 #include "../OperationCaller.hpp"
 #include "../internal/ConnFactory.hpp"
+#include "../internal/ConnectionIntrospector.hpp"
+#include <fstream>
 
 using namespace RTT;
 using namespace RTT::detail;
@@ -86,6 +88,21 @@ Service* PortInterface::createPortObject()
 
     typedef void (PortInterface::*disconnect_all)();
     to->addSynchronousOperation("disconnect", static_cast<disconnect_all>(&PortInterface::disconnect), this).doc("Disconnects this port from any connection it is part of.");
+
+    to->addSynchronousOperation("showPortConnections",
+        &PortInterface::showPortConnections, this).doc(
+            "Logs a list of connections for this port.").arg(
+                "depth", "Number of levels to look for: 1 will only list direct"
+                " connections, more than 1 will also look at connected ports "
+                "connections.");
+    to->addSynchronousOperation("printPortConnectionsGraph",
+        &PortInterface::printPortConnectionsGraph, this).doc(
+            "Creates a graph of connections for this port.")
+                .arg("depth", "Number of levels to look for: 1 will only list "
+                              "direct connections, more than 1 will also look "
+                              "at connected ports connections.")
+                .arg("file", "Name of the file to save the graph to.");
+
     return to;
 #else
     return 0;
@@ -109,4 +126,33 @@ DataFlowInterface* PortInterface::getInterface() const
 internal::SharedConnectionBase::shared_ptr PortInterface::getSharedConnection() const
 {
     return cmanager.getSharedConnection();
+}
+
+void PortInterface::showPortConnections(int depth) const
+{
+    if (depth < 1) {depth = 1;}
+
+    ConnectionIntrospector ci(this);
+    ci.createGraph(depth);
+    std::cout << "\n" << ci << std::endl;
+}
+
+void PortInterface::printPortConnectionsGraph(int depth,
+                                              const std::string& filename) const
+{
+    if (depth < 1) {depth = 1;}
+
+    ConnectionIntrospector ci(this);
+    ci.createGraph(depth);
+
+    std::ofstream file;
+    file.open(filename.c_str());
+    if (!file.is_open()) {
+        log(Error) << "Unable to open file '" << filename << "', will print"
+                   << " port connections to stdout" << endlog();
+        ci.toDot(std::cout);
+    } else {
+        ci.toDot(file);
+        file.close();
+    }
 }
