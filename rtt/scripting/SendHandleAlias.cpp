@@ -70,7 +70,7 @@ namespace RTT
                                            bool inst)
     {
         // BIG NOTE: Instantiating a SendHandleAlias may/WILL happen too soon, not giving a chance
-        // to the arguments to instantiate during copy... Once instantiation is over, we 
+        // to the arguments to instantiate during copy... Once instantiation is over, we
         // may call copy, but we guess this won't even happen in our current application.
         assert( (inst == false) && "SendHandleAlias may not be instantiated !" );
         return new SendHandleAlias(mname, data->copy(replacements), fact);

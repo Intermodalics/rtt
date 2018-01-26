@@ -172,7 +172,7 @@ namespace RTT { namespace base {
         /** Signals that there is new data available on this channel
          * Forwards to \ref signal() unless overwritten in a derived class.
          */
-        virtual bool signalFrom(ChannelElementBase *caller) { return signal(); }
+        virtual bool signalFrom(ChannelElementBase *) { return signal(); }
 
         /**
          * This is called on the output half of a new connection by the connection
@@ -264,6 +264,44 @@ namespace RTT { namespace base {
             assert(false && "ChannelElementBase::setInput() is deprecated! You should use ChannelElementBase::addInput() instead.");
             (void) addInput(input);
         }
+
+        /**
+         * This function may be used to identify,
+         * if the current element uses a network
+         * transport, to send the data to the next
+         * Element in the logical chain.
+         *
+         * @return true if a network transport is used.
+         * */
+        virtual bool isRemoteElement() const;
+
+        /**
+         * This function returns the URI of the
+         * next channel element in the logical
+         * chain. The URI must be unique.
+         * E.g: In the local case output->getLocalURI()
+         * In the remote case the URI of the remote
+         * channel element.
+         *
+         * @return URI of the next element.
+         * */
+        virtual std::string getRemoteURI() const;
+
+        /**
+         * This function return the URI of this
+         * element. The URI must be unique.
+         * @return URI of this element.
+         * */
+        virtual std::string getLocalURI() const;
+
+        /**
+         * Returns the class name of this
+         * element. This is primary useful
+         * for special case handling in the
+         * connection tracking.
+         * @return The name of the class of the ChannelElement
+         * */
+        virtual std::string getElementName() const;
 
     protected:
         friend class MultipleInputsChannelElementBase;

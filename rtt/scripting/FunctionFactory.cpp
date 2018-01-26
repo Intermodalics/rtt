@@ -232,11 +232,11 @@ namespace RTT {
         }
 
         base::DataSourceBase::shared_ptr FunctionFactory::produceHandle() const {
-        	return new ValueDataSource<SendStatus>(SendNotReady);
+            return new ValueDataSource<SendStatus>(SendNotReady);
         }
         base::DataSourceBase::shared_ptr FunctionFactory::produceSend(const std::vector<base::DataSourceBase::shared_ptr>& args, ExecutionEngine* caller
                                    ) const {
-        	return produceHelper(args, caller, true);
+            return produceHelper(args, caller, true);
         }
         base::DataSourceBase::shared_ptr FunctionFactory::produceCollect(const std::vector<base::DataSourceBase::shared_ptr>& args, DataSource<bool>::shared_ptr blocking
                                    ) const {
@@ -255,7 +255,7 @@ namespace RTT {
                     log(Error) <<"FunctionFactory: Please define your SendHandle with 'var SendHandle' for script functions." <<endlog();
                     return 0;
                 }
-                    
+
             }
             log(Error) <<"FunctionFactory: Must provide an argument in produceCollect." <<endlog();
             return 0;

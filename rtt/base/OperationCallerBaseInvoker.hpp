@@ -51,7 +51,7 @@ namespace RTT
          */
         struct OperationCallerBaseInvoker
         {
-            virtual ~OperationCallerBaseInvoker() {};
+            virtual ~OperationCallerBaseInvoker() {}
 
             /**
              * Returns true if this OperationCaller has received a correct implementation.
