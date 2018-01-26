@@ -3,6 +3,7 @@
 #include "../Port.hpp"
 #include "../TaskContext.hpp"
 
+#include <boost/lexical_cast.hpp>
 #include <cassert>
 
 namespace RTT {
@@ -105,7 +106,7 @@ inline ConnectionIntrospector::NodePtr ConnectionIntrospector::Connection::getOu
 }
 
 inline ConnectionIntrospector::NodePtr ConnectionIntrospector::Connection::getInput() const {
-    return is_forward_ ? to() : to();
+    return is_forward_ ? to() : from();
 }
 
 inline bool ConnectionIntrospector::Connection::isForward() const {
@@ -158,6 +159,7 @@ void ConnectionIntrospector::reset() {
 }
 
 void ConnectionIntrospector::createGraph(int depth) {
+    depth_ = depth;
     createGraphInternal(depth, start_nodes_);
 }
 
@@ -176,14 +178,12 @@ void ConnectionIntrospector::createGraphInternal(int remaining_depth, const Node
             for(ConnectionManager::Connections::const_iterator con_it = connections.begin();
                 con_it != connections.end(); ++con_it) {
                 const ConnectionManager::ChannelDescriptor &descriptor = *con_it;
-//                const ConnID *conn_id = descriptor.get<0>().get();
-//                const base::PortInterface *other_port = conn_id->getPort();
                 const base::PortInterface *other_port = descriptor.get<1>()->getPort();
                 NodePtr other;
                 if (other_port) {
                     other.reset( new PortNode(other_port) );
                 } else {
-                    other.reset( new Node(descriptor.get<1>().get()) );
+                    other.reset( new Node(descriptor.get<1>().get(), (descriptor.get<0>() ? descriptor.get<0>()->getName() : "")) );
                 }
 
                 // Check if the other node is already known
@@ -235,7 +235,7 @@ ConnectionIntrospector::NodePtr ConnectionIntrospector::findNode(const Node &nod
     return NodePtr();
 }
 
-ConnectionIntrospector::ConnectionPtr ConnectionIntrospector::findConnectionTo(const Connections &connections, const Node &node) const {
+ConnectionIntrospector::ConnectionPtr ConnectionIntrospector::findConnectionTo(const Connections &connections, const Node &node) {
     Connections::const_iterator it;
     for(it = connections.begin(); it != connections.end(); ++it) {
         if (*((*it)->to()) == node) return *it;
@@ -243,63 +243,88 @@ ConnectionIntrospector::ConnectionPtr ConnectionIntrospector::findConnectionTo(c
     return ConnectionPtr();
 }
 
-//static std::ostream& ConnectionIntrospector::printIndented(std::ostream& os,
-//        int i) const {
-//    const int currIndent = 4 * this->depth + i;
-//    if (this->depth == -1) {
-//        // For depth -1, only log the component name.
-//        os << std::string(i, ' ') << this->in_port.owner_name
-//           << " COMPONENT\n";
-//    } else if (this->depth == 0) {
-//        // For depth 0, only log the port.
-//        std::string connection_summary;
-//        const int connection_nr = this->sub_connections.size();
-//        switch (connection_nr) {
-//        case 0:
-//            connection_summary = "No";
-//            break;
-//        case 1:
-//            connection_summary = "Single";
-//            break;
-//        default:
-//            connection_summary = "Multiple";
-//            break;
-//        }
-//        os << std::string(currIndent, ' ')
-//           << (this->is_forward ? " IN " : " OUT ")
-//           << (this->is_forward ? this->in_port
-//                                     : this->out_port)
-//           << " with " << connection_summary << " connection(s) (#"
-//           << connection_nr << ")" << ":\n";
-//    } else if (this->depth > 0) {
-//        // Positive depth, log the full connection information.
-//        os << std::string(currIndent, ' ')
-//           << (this->is_forward ? " -> IN " : " <- OUT ")
-//           << ((this->is_forward ? this->in_port
-//                                     : this->out_port).is_remote ?
-//                  "(remote) " : "")
-//           << (this->is_forward ? this->in_port
-//                                     : this->out_port)
-//           << " : (" << this->connection_policy << ")\n";
-//    }
-//    for (std::list< ConnectionIntrospector >::const_iterator
-//            it = this->sub_connections.begin();
-//         it != this->sub_connections.end(); ++it) {
-//        os << *it;
-//    }
-//    return os;
-//}
+std::string ConnectionIntrospector::Node::getConnectionSummary() const {
+    std::string connection_summary;
+    const int connection_nr = this->connections_.size();
+    switch (connection_nr) {
+    case 0:
+        connection_summary = "no";
+        break;
+    case 1:
+        connection_summary = "single";
+        break;
+    default:
+        connection_summary = "multiple";
+        break;
+    }
 
-//boost::function<std::ostream&(std::ostream&)>
-//ConnectionIntrospector::indent(int i) const {
-//    return boost::bind(&ConnectionIntrospector::printIndented, this, _1, i);
-//}
+    return (" with " + connection_summary + " connection(s) (#"
+            + boost::lexical_cast<std::string>(connection_nr) + ")");
+}
+
+std::ostream& ConnectionIntrospector::Node::printIndented(
+        std::ostream& os, int depth, int indent_lvl,
+        const ConnectionPtr incoming_connection,
+        Connections printed_connections) const {
+    if (indent_lvl > depth) return os;
+
+    if (std::find(printed_connections.begin(), printed_connections.end(),
+                  incoming_connection) != printed_connections.end()) {
+        return os;
+    } else if (incoming_connection.get()){
+        printed_connections.push_back(incoming_connection);
+    }
+
+    const std::string port_type = "[" +
+            (this->isPort()
+                ? dynamic_cast<const ConnectionIntrospector::PortNode *>(this)->getPortType()
+                : "NOT")
+            + " port] ";
+    const std::string is_remote =
+            this->isRemote() ? "[REMOTE: " + this->endpoint_->getElementName() + "] "
+                             : "";
+
+    const std::string connection_summary =
+            (indent_lvl == 0 ? this->getConnectionSummary() : "");
+
+    ConnectionPtr connection = incoming_connection;
+    std::ostringstream connection_str;
+    if (connection.get()) {
+        assert(connection->from().get());
+        connection_str << " [" << connection->from_.second.get<2>() << "]";
+    }
+
+    const int currIndent = 4 * indent_lvl;
+    os << std::string(currIndent, ' ')
+       << port_type << is_remote << this->getName() << connection_summary
+       << connection_str.str() << "\n";
+
+    for (Connections::const_iterator conn = this->connections_.begin();
+         conn != this->connections_.end(); ++conn) {
+        if (*((*conn)->to()) == *this) {
+            (*conn)->from()->printIndented(os, depth, indent_lvl + 1, *conn,
+                                           printed_connections);
+        } else {
+            (*conn)->to()->printIndented(os, depth, indent_lvl + 1, *conn,
+                                         printed_connections);
+        }
+    }
+
+    return os;
+}
 
 std::ostream& operator<<(
         std::ostream& os,
         const ConnectionIntrospector& descriptor) {
-//    return descriptor.indent(0)(os);
-//    return printTo(descriptor.start_nodes_, os);
+
+    for (ConnectionIntrospector::Nodes::const_iterator node = descriptor.start_nodes_.begin();
+         node != descriptor.start_nodes_.end(); ++node) {
+        (*node)->printIndented(
+                    os, descriptor.depth_, 0,
+                    ConnectionIntrospector::ConnectionPtr(),
+                    ConnectionIntrospector::Connections()) << "\n";
+    }
+
     return os;
 }
 
