@@ -340,6 +340,12 @@ bool MultipleInputsChannelElementBase::signalFrom(ChannelElementBase *caller)
     return signal();
 }
 
+MultipleInputsChannelElementBase::Inputs MultipleInputsChannelElementBase::getInputs() const
+{
+    RTT::os::MutexLock lock(inputs_lock);
+    return inputs;
+}
+
 MultipleOutputsChannelElementBase::MultipleOutputsChannelElementBase()
 {}
 
@@ -449,6 +455,12 @@ void MultipleOutputsChannelElementBase::removeDisconnectedOutputs()
             removeOutput(output.channel.get()); // invalidates output
         }
     }
+}
+
+MultipleOutputsChannelElementBase::Outputs MultipleOutputsChannelElementBase::getOutputs() const
+{
+    RTT::os::MutexLock lock(outputs_lock);
+    return outputs;
 }
 
 bool MultipleInputsMultipleOutputsChannelElementBase::connected()
