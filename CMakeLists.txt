@@ -13,6 +13,11 @@ if(POLICY CMP0026)
   cmake_policy(SET CMP0026 OLD)
 endif()
 
+# fix linking by full path for CMake 3.3 and above (see "cmake --help-policy CMP0060")
+if(POLICY CMP0060)
+  cmake_policy(SET CMP0060 NEW)
+endif()
+
 ###################################################
 #                                                 #
 #       Start project customization section       #
