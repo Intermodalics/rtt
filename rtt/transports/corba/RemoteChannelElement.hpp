@@ -43,6 +43,9 @@
 #include "CorbaTypeTransporter.hpp"
 #include "CorbaDispatcher.hpp"
 
+#include <rtt/os/Mutex.hpp>
+#include <rtt/os/MutexLock.hpp>
+
 namespace RTT {
 
     namespace corba {
@@ -77,6 +80,16 @@ namespace RTT {
          * If signalling is false, no remoteSignal() calls will be forwarded to remote channel elements.
          */
         bool signalling;
+
+        /**
+         * A mutex to protect the channel pipeline from concurrent incoming writes and other
+         * method invocations.
+         * Depending on the CORBA implementation and its configuration the RemoteChannel interface
+         * might be accessed by multiple threads concurrently.
+         *
+         * @todo Remove after https://github.com/orocos-toolchain/rtt/pull/250 has been merged.
+         */
+        RTT::os::Mutex remote_call_mutex;
 
 	public:
 	    /**
@@ -119,7 +132,10 @@ namespace RTT {
             void remoteSignal() ACE_THROW_SPEC ((
           	      CORBA::SystemException
           	    ))
-            { base::ChannelElement<T>::signal(); }
+            {
+                RTT::os::MutexLock lock(remote_call_mutex);
+                base::ChannelElement<T>::signal();
+            }
 
             bool signal()
             {
@@ -180,6 +196,8 @@ namespace RTT {
             void disconnect() ACE_THROW_SPEC ((
           	      CORBA::SystemException
           	    )) {
+                RTT::os::MutexLock lock(remote_call_mutex);
+
                 // disconnect both local and remote side.
                 // !!!THIS RELIES ON BEHAVIOR OF REMOTEDISCONNECT BELOW doing both writer_to_reader and !writer_to_reader !!!
                 try {
@@ -192,10 +210,15 @@ namespace RTT {
                 catch(CORBA::Exception&) {}
             }
 
+            /**
+             * CORBA IDL function.
+             */
             void remoteDisconnect(bool writer_to_reader) ACE_THROW_SPEC ((
           	      CORBA::SystemException
           	    ))
             {
+                RTT::os::MutexLock lock(remote_call_mutex);
+
                 base::ChannelElement<T>::disconnect(writer_to_reader);
 
                 // Because we support out-of-band transports, we must cleanup more thoroughly.
@@ -218,6 +241,8 @@ namespace RTT {
           	      CORBA::SystemException
           	    ))
             {
+                RTT::os::MutexLock lock(remote_call_mutex);
+
                 try {
                     if ( ! CORBA::is_nil(remote_side.in()) )
                         remote_side->remoteDisconnect(writer_to_reader);
@@ -285,6 +310,7 @@ namespace RTT {
           	      CORBA::SystemException
           	    ))
             {
+                RTT::os::MutexLock lock(remote_call_mutex);
 
                 FlowStatus fs;
                 typename internal::ValueDataSource<T> value_data_source;
@@ -342,6 +368,8 @@ namespace RTT {
           	      CORBA::SystemException
           	    ))
             {
+                RTT::os::MutexLock lock(remote_call_mutex);
+
                 typename internal::ValueDataSource<T> value_data_source;
                 value_data_source.ref();
                 transport.updateFromAny(&sample, &value_data_source);
@@ -363,6 +391,8 @@ namespace RTT {
              * CORBA IDL function.
              */
             virtual bool inputReady() {
+                RTT::os::MutexLock lock(remote_call_mutex);
+
                 // signal to oob transport if any.
                 typename base::ChannelElement<T>::shared_ptr input =
                     this->getInput();
