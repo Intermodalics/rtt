@@ -45,6 +45,7 @@
 
 #include "RemoteConnID.hpp"
 
+using namespace RTT;
 using namespace RTT::corba;
 
 RemoteConnID::RemoteConnID(CDataFlowInterface_ptr dataflow, std::string const& name)
@@ -60,4 +61,8 @@ bool RemoteConnID::isSameID(ConnID const& id) const
 
 RTT::internal::ConnID* RemoteConnID::clone() const {
     return new RemoteConnID( this->dataflow.in(), this->name);
+}
+
+std::string RemoteConnID::getName() const {
+    return this->name;
 }

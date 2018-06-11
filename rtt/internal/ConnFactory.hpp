@@ -65,11 +65,12 @@ namespace RTT
      */
     struct LocalConnID : public ConnID
     {
-        base::PortInterface const* ptr;
+        const base::PortInterface * const ptr;
         LocalConnID(base::PortInterface const* obj)
             : ptr(obj) {}
         virtual ConnID* clone() const;
         virtual bool isSameID(ConnID const& id) const;
+        virtual const base::PortInterface *getPort() const;
     };
 
     /**
@@ -82,6 +83,7 @@ namespace RTT
             : name_id(name) {}
         virtual ConnID* clone() const;
         virtual bool isSameID(ConnID const& id) const;
+        virtual std::string getName() const;
     };
 
 

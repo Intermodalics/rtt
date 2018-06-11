@@ -58,6 +58,10 @@ ConnID* LocalConnID::clone() const {
     return new LocalConnID(this->ptr);
 }
 
+const base::PortInterface *LocalConnID::getPort() const {
+    return this->ptr;
+}
+
 bool StreamConnID::isSameID(ConnID const& id) const
 {
     StreamConnID const* real_id = dynamic_cast<StreamConnID const*>(&id);
@@ -68,6 +72,10 @@ bool StreamConnID::isSameID(ConnID const& id) const
 
 ConnID* StreamConnID::clone() const {
     return new StreamConnID(this->name_id);
+}
+
+std::string StreamConnID::getName() const {
+    return this->name_id;
 }
 
 base::ChannelElementBase::shared_ptr RTT::internal::ConnFactory::buildRemoteChannelOutput(base::OutputPortInterface& output_port, base::InputPortInterface& input_port, const ConnPolicy& policy)

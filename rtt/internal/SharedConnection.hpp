@@ -60,6 +60,7 @@ namespace internal {
             : connection(connection) {}
         virtual ConnID* clone() const;
         virtual bool isSameID(ConnID const& id) const;
+        virtual std::string getName() const;
         template <typename T> boost::intrusive_ptr< SharedConnection<T> > getConnection() const
         {
             return boost::static_pointer_cast< SharedConnection<T> >(connection);
@@ -101,6 +102,9 @@ namespace internal {
         virtual const std::string &getName() const;
 
         virtual const ConnPolicy *getConnPolicy() const;
+
+        virtual base::MultipleInputsChannelElementBase::Inputs getInputs() const = 0;
+        virtual base::MultipleOutputsChannelElementBase::Outputs getOutputs() const = 0;
     };
 
     /**
@@ -214,6 +218,14 @@ namespace internal {
         {
             return mstorage->data_sample();
         }
+
+        virtual base::MultipleInputsChannelElementBase::Inputs getInputs() const {
+            return base::MultipleInputsChannelElement<T>::getInputs();
+        }
+
+        virtual base::MultipleOutputsChannelElementBase::Outputs getOutputs() const {
+            return base::MultipleOutputsChannelElement<T>::getOutputs();
+        }
     };
 
     template <typename T>
@@ -226,6 +238,14 @@ namespace internal {
             : SharedConnectionBase(policy)
         {}
         virtual ~SharedRemoteConnection() {}
+
+        virtual base::MultipleInputsChannelElementBase::Inputs getInputs() const {
+            return base::MultipleInputsChannelElementBase::Inputs();
+        }
+
+        virtual base::MultipleOutputsChannelElementBase::Outputs getOutputs() const {
+            return base::MultipleOutputsChannelElementBase::Outputs();
+        }
     };
 }}
 

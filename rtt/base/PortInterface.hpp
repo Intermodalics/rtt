@@ -87,6 +87,14 @@ namespace RTT
         bool setName(const std::string& name);
 
         /**
+         * Gets the qualified name of this Port.
+         * The qualified name starts with the owner's name (if any),
+         * eventually intermediate services and finally the port's name,
+         * separated by dots.
+         */
+        std::string getQualifiedName() const;
+
+        /**
          * Get the documentation of this port.
          * @return A description.
          */
@@ -216,10 +224,16 @@ namespace RTT
          * in order to allow connection introspection.
          * @return null if no such manager is available, or the manager
          * otherwise.
-         * @see ConnectionManager::getChannels() for a list of all
+         * @see ConnectionManager::getConnections() for a list of all
          * connections of this port.
          */
         virtual internal::ConnectionManager* getManager() { return &cmanager; }
+
+        /**
+         * Const variant of getManager().
+         * @copydoc getManager()
+         */
+        virtual const internal::ConnectionManager* getManager() const { return &cmanager; }
 
         /**
          * Returns the input or output endpoint of this port (if any).
@@ -232,6 +246,14 @@ namespace RTT
          * Returns a pointer to the shared connection element this port may be connected to.
          */
         virtual internal::SharedConnectionBase::shared_ptr getSharedConnection() const;
+
+    private:
+        /**
+         * @brief Lists all connections this port has, up to depth levels.
+         * @param depth Levels to explore: 1 (or less) will only explore direct
+         *              connections.
+         */
+        void showPortConnections(int depth) const;
     };
 
 }}

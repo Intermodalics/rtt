@@ -40,6 +40,7 @@
 #include "../Service.hpp"
 #include "../OperationCaller.hpp"
 #include "../internal/ConnFactory.hpp"
+#include "../internal/ConnectionIntrospector.hpp"
 
 using namespace RTT;
 using namespace RTT::detail;
@@ -55,6 +56,23 @@ bool PortInterface::setName(const std::string& name)
         return true;
     }
     return false;
+}
+
+std::string PortInterface::getQualifiedName() const
+{
+    std::string qualified_name = getName();
+    const RTT::DataFlowInterface *interface = getInterface();
+    if (!interface) return qualified_name;
+
+    const RTT::Service *service = interface->getService();
+    while(service) {
+        if (!service->getName().empty()) {
+            qualified_name = service->getName() + "." + qualified_name;
+        }
+        service = service->getParent().get();
+    }
+
+    return qualified_name;
 }
 
 PortInterface& PortInterface::doc(const std::string& desc) {
@@ -86,6 +104,13 @@ Service* PortInterface::createPortObject()
 
     typedef void (PortInterface::*disconnect_all)();
     to->addSynchronousOperation("disconnect", static_cast<disconnect_all>(&PortInterface::disconnect), this).doc("Disconnects this port from any connection it is part of.");
+
+    to->addSynchronousOperation("showPortConnections",
+        &PortInterface::showPortConnections, this).doc(
+            "Logs a list of connections for this port.").arg(
+                "depth", "Number of levels to look for: 1 will only list direct"
+                " connections, more than 1 will also look at connected ports "
+                "connections.");
     return to;
 #else
     return 0;
@@ -109,4 +134,13 @@ DataFlowInterface* PortInterface::getInterface() const
 internal::SharedConnectionBase::shared_ptr PortInterface::getSharedConnection() const
 {
     return cmanager.getSharedConnection();
+}
+
+void PortInterface::showPortConnections(int depth) const
+{
+    if (depth < 1) depth = 1;
+
+    ConnectionIntrospector ci(this);
+    ci.createGraph(depth);
+    std::cout << "\n" << ci << std::endl;
 }
