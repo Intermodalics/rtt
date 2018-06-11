@@ -227,7 +227,7 @@ extern "C"
     {
         pthread_mutexattr_t ma_t;
         pthread_mutexattr_init(&ma_t);
-        pthread_mutexattr_settype(&ma_t, PTHREAD_MUTEX_RECURSIVE_NP);
+        pthread_mutexattr_settype(&ma_t, PTHREAD_MUTEX_RECURSIVE);
         pthread_mutexattr_setprotocol(&ma_t, PTHREAD_PRIO_INHERIT);
         return pthread_mutex_init(m, &ma_t);
     }
@@ -279,14 +279,6 @@ extern "C"
         return pthread_mutex_unlock(m);
     }
 
-    static inline void rtos_enable_rt_warning(void)
-    {
-    }
-
-    static inline void rtos_disable_rt_warning(void)
-    {
-    }
-
     typedef pthread_cond_t rt_cond_t;
 
     static inline int rtos_cond_init(rt_cond_t *cond)
@@ -313,6 +305,14 @@ extern "C"
     static inline int rtos_cond_broadcast(rt_cond_t *cond)
     {
         return pthread_cond_broadcast(cond);
+    }
+
+    static inline void rtos_enable_rt_warning(void)
+    {
+    }
+
+    static inline void rtos_disable_rt_warning(void)
+    {
     }
 
 #define rtos_printf printf

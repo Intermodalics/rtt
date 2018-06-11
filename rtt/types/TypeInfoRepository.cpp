@@ -112,6 +112,12 @@ namespace RTT
 
     TypeInfo* TypeInfoRepository::type( const std::string& name ) const
     {
+        // strip qualifier after the first space
+        std::string unqualified = name;
+        if ( unqualified.find(' ') != std::string::npos ) {
+            unqualified = unqualified.substr(0, unqualified.find(' '));
+        }
+
         TypeInfo *ret = typeInternal(name);
         
         if(!ret && loadTypeKitForName)
@@ -119,7 +125,7 @@ namespace RTT
             if(loadTypeKitForName(name))
                 ret = typeInternal(name);
         }
-            
+
         return ret;
     }
 
